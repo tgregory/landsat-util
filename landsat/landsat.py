@@ -446,7 +446,7 @@ def __main__():
     global parser
     parser = args_options()
     args = parser.parse_args()
-    if args.json:
+    if hasattr(args, 'json'):
         print main(args)
         sys.exit(0)
     else:

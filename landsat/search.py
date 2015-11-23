@@ -16,7 +16,7 @@ class Search(object):
         self.api_url = settings.API_URL
 
     def search(self, paths_rows=None, lat=None, lon=None, address=None, start_date=None, end_date=None, cloud_min=None,
-               cloud_max=None, limit=1):
+               cloud_max=None, day_night=None, limit=1):
         """
         The main method of Search class. It searches Development Seed's Landsat API.
 
@@ -52,6 +52,10 @@ class Search(object):
             float specifying the maximum percentage. e.g. 78.9
         :type cloud_max:
             float
+        :param day_night:
+            DAY or NIGHT scene conditions.
+        :type day_night:
+            String
         :param limit:
             integer specigying the maximum results return.
         :type limit:
@@ -76,13 +80,15 @@ class Search(object):
                             'path': u'003',
                             'thumbnail': u'http://....../landsat_8/2014/003/003/LC80030032014142LGN00.jpg',
                             'cloud': 33.36,
+                            'day_night': u'DAY',
                             'row': u'003
                         }
                     ]
                 }
         """
 
-        search_string = self.query_builder(paths_rows, lat, lon, address, start_date, end_date, cloud_min, cloud_max)
+        search_string = self.query_builder(paths_rows, lat, lon, address, start_date, end_date, cloud_min, cloud_max,
+                                           day_night)
 
         # Have to manually build the URI to bypass requests URI encoding
         # The api server doesn't accept encoded URIs
@@ -108,13 +114,14 @@ class Search(object):
                                   'row': three_digit(i['row']),
                                   'thumbnail': i['browseURL'],
                                   'date': i['acquisitionDate'],
-                                  'cloud': i['cloudCoverFull']}
+                                  'cloud': i['cloudCoverFull'],
+                                  'day_night': i['dayOrNight']}
                                  for i in r_dict['results']]
 
         return result
 
     def query_builder(self, paths_rows=None, lat=None, lon=None, address=None, start_date=None, end_date=None,
-                      cloud_min=None, cloud_max=None):
+                      cloud_min=None, cloud_max=None, day_night=None):
         """ Builds the proper search syntax (query) for Landsat API.
 
         :param paths_rows:
@@ -149,6 +156,10 @@ class Search(object):
             float specifying the maximum percentage. e.g. 78.9
         :type cloud_max:
             float
+        :param day_night:
+            DAY or NIGHT scene conditions.
+        :type day_night:
+            String
 
         :returns:
             String
@@ -178,6 +189,9 @@ class Search(object):
             query.append(self.cloud_cover_prct_range_builder(cloud_min, '100'))
         elif cloud_max:
             query.append(self.cloud_cover_prct_range_builder('-1', cloud_max))
+
+        if day_night:
+            query.append(self.day_night_builder(day_night))
 
         if address:
             query.append(self.address_builder(address))
@@ -251,6 +265,19 @@ class Search(object):
         """
         return 'cloudCoverFull:[%s+TO+%s]' % (min, max)
 
+    def day_night_builder(self, day_night):
+        """ Builds day_night query from a day_night value.
+
+        :param day_night:
+            DAY or NIGHT conditions.
+        :type day_night:
+            String
+
+        :return:
+            String
+        """
+        return 'dayOrNight:%s' % (day_night)
+
     def address_builder(self, address):
         """ Builds lat and lon query from a geocoded address.
 
@@ -265,7 +292,7 @@ class Search(object):
         geocoded = geocode(address)
         return self.lat_lon_builder(**geocoded)
 
-    def lat_lon_builder(self, lat=0, lon=0):
+    def lat_lon_builder(self, lat=0, lon=0, lat2=None, lon2=None):
         """ Builds lat and lon query.
 
         :param lat:
@@ -280,6 +307,15 @@ class Search(object):
         :returns:
             String
         """
+
+        _lat2 = lat
+        if lat2:
+            _lat2 = lat2
+
+        _lon2 = lon
+        if lon2:
+            _lon2 = lon2
+
         return ('upperLeftCornerLatitude:[%s+TO+1000]+AND+lowerRightCornerLatitude:[-1000+TO+%s]'
                 '+AND+lowerLeftCornerLongitude:[-1000+TO+%s]+AND+upperRightCornerLongitude:[%s+TO+1000]'
-                % (lat, lat, lon, lon))
+                % (lat, _lat2, lon, _lon2))
