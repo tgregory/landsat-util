@@ -205,7 +205,6 @@ class Search(object):
             search_string = and_string + '+AND+(' + or_string + ')'
         else:
             search_string = or_string + and_string
-
         return search_string
 
     def row_path_builder(self, path='', row=''):
@@ -292,7 +291,7 @@ class Search(object):
         geocoded = geocode(address)
         return self.lat_lon_builder(**geocoded)
 
-    def lat_lon_builder(self, lat=0, lon=0, lat2=None, lon2=None):
+    def lat_lon_builder(self, lat=[0], lon=[0]):
         """ Builds lat and lon query.
 
         :param lat:
@@ -308,14 +307,17 @@ class Search(object):
             String
         """
 
-        _lat2 = lat
-        if lat2:
-            _lat2 = lat2
+        result = '('
 
-        _lon2 = lon
-        if lon2:
-            _lon2 = lon2
+        for i in range(len(lat) - 1):
+            result += ('(upperLeftCornerLatitude:[%s+TO+1000]+AND+lowerRightCornerLatitude:[-1000+TO+%s]'
+            '+AND+lowerLeftCornerLongitude:[-1000+TO+%s]+AND+upperRightCornerLongitude:[%s+TO+1000])+OR+'
+            % (lat[i], lat[i], lon[i], lon[i]))
 
-        return ('upperLeftCornerLatitude:[%s+TO+1000]+AND+lowerRightCornerLatitude:[-1000+TO+%s]'
-                '+AND+lowerLeftCornerLongitude:[-1000+TO+%s]+AND+upperRightCornerLongitude:[%s+TO+1000]'
-                % (lat, _lat2, lon, _lon2))
+        result += ('(upperLeftCornerLatitude:[%s+TO+1000]+AND+lowerRightCornerLatitude:[-1000+TO+%s]'
+        '+AND+lowerLeftCornerLongitude:[-1000+TO+%s]+AND+upperRightCornerLongitude:[%s+TO+1000])'
+        % (lat[-1], lat[-1], lon[-1], lon[-1]))
+
+        result += ')'
+
+        return result

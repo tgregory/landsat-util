@@ -57,7 +57,9 @@ search, download, and process Landsat imagery.
                 --latest N          Returns the N latest images within the last 365 days.
 
                 -c CLOUD, --cloud CLOUD
-                                    Maximum cloud percentage. Default: 20 perct
+                                    Maximum cloud percentage. Default: 100 perct
+
+                --day-night COND    DAY or NIGHT scene conditions.
 
                 --json              Returns a bare JSON response
 
@@ -183,11 +185,13 @@ def args_options():
     parser_search.add_argument('-c', '--cloud', type=float, default=100.0,
                                help='Maximum cloud percentage '
                                'default is 100 perct')
+    parser_search.add_argument('--day-night', type=str,
+                               help='DAY or NIGHT scene conditions.')
     parser_search.add_argument('-p', '--pathrow',
                                help='Paths and Rows in order separated by comma. Use quotes ("001").'
                                'Example: path,row,path,row 001,001,190,204')
-    parser_search.add_argument('--lat', type=float, help='The latitude')
-    parser_search.add_argument('--lon', type=float, help='The longitude')
+    parser_search.add_argument('--lat', help='The latitude')
+    parser_search.add_argument('--lon', help='The longitude')
     parser_search.add_argument('--address', type=str, help='The address')
     parser_search.add_argument('--json', action='store_true', help='Returns a bare JSON response')
     parser_search.add_argument('--ids-only', action='store_true', help='Returns only ids of suitable scenes')
@@ -309,14 +313,25 @@ def main(args):
             s = Search()
 
             try:
-                lat = float(args.lat) if args.lat else None
-                lon = float(args.lon) if args.lon else None
+                lat = None
+                lon = None
+                if args.lat and args.lon:
+                    lat = map(lambda l: float(l), args.lat.split(',')) if args.lat else None
+                    lon = map(lambda l: float(l), args.lon.split(',')) if args.lon else None
+                    if len(lat) != len(lon):
+                        return ["There must be an equal amount of longitudes an latitudes provided", 1]
             except ValueError:
                 return ["The latitude and longitude values must be valid numbers", 1]
 
             address = args.address
             if address and (lat and lon):
                 return ["Cannot specify both address and latitude-longitude"]
+
+            day_night = args.day_night
+            if day_night:
+                day_night = day_night.upper()
+                if 'DAY' != day_night and 'NIGHT' != day_night:
+                    return ["Day-night parameter must either be set to DAY or NIGHT or not provided"]
 
             result = s.search(paths_rows=args.pathrow,
                               lat=lat,
@@ -325,7 +340,8 @@ def main(args):
                               limit=args.limit,
                               start_date=args.start,
                               end_date=args.end,
-                              cloud_max=args.cloud)
+                              cloud_max=args.cloud,
+                              day_night=day_night)
 
             if result['status'] == 'SUCCESS':
                 if args.json:
