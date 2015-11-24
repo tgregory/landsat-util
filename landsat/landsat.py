@@ -61,6 +61,8 @@ search, download, and process Landsat imagery.
 
                 --json              Returns a bare JSON response
 
+                --ids-only          Returns only ids of suitable scenes
+
                 -h, --help          Show this help message and exit
 
         Download:
@@ -188,6 +190,7 @@ def args_options():
     parser_search.add_argument('--lon', type=float, help='The longitude')
     parser_search.add_argument('--address', type=str, help='The address')
     parser_search.add_argument('--json', action='store_true', help='Returns a bare JSON response')
+    parser_search.add_argument('--ids-only', action='store_true', help='Returns only ids of suitable scenes')
 
     parser_download = subparsers.add_parser('download',
                                             help='Download images from Google Storage')
@@ -327,6 +330,9 @@ def main(args):
             if result['status'] == 'SUCCESS':
                 if args.json:
                     return json.dumps(result)
+
+                if args.ids_only:
+                    return ' '.join(map(lambda r: str(r['sceneID']), result['results']))
 
                 if args.latest > 0:
                     datelist = []
